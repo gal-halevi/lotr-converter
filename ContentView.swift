@@ -124,6 +124,7 @@ struct ContentView: View {
                 .padding()
                 .background(.black.opacity(0.5))
                 .clipShape(.capsule)
+                .onTapGesture() {}
                 
                 Spacer()
                 
@@ -174,6 +175,10 @@ struct ContentView: View {
                 print("Unable to encode \(rightCurrency)")
             }
             rightAmount = leftCurrency.convert(leftAmount, to: rightCurrency)
+        }
+        .onTapGesture {
+            leftTyping = false
+            rightTyping = false
         }
         .sheet(isPresented: $showExchangeInfo) {
             ExchangeInfo()
