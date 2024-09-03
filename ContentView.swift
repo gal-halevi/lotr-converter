@@ -9,17 +9,40 @@ import SwiftUI
 import TipKit
 
 struct ContentView: View {
-    @State var showExchangeInfo = false
-    @State var showSelectCurrency = false
+    @AppStorage("showExchangeInfo") var showExchangeInfo = false
+    @AppStorage("showSelectCurrency") var showSelectCurrency = false
     
-    @State var leftAmount = ""
-    @State var rightAmount = ""
+    @AppStorage("leftAmount") var leftAmount = ""
+    @AppStorage("rightAmount") var rightAmount = ""
     
     @State var leftCurrency: Currency = .silverPiece
     @State var rightCurrency: Currency = .goldPiece
     
     @FocusState var leftTyping
     @FocusState var rightTyping
+    
+    init() {
+        if let leftData = UserDefaults.standard.data(forKey: "leftCurrency") {
+            do {
+                let decoder = JSONDecoder()
+                let decodedCurrency = try decoder.decode(Currency.self, from: leftData)
+                self._leftCurrency = State(initialValue: decodedCurrency)
+            } catch {
+                print("Unable to decode \(leftCurrency)")
+            }
+        }
+        
+        if let rightData = UserDefaults.standard.data(forKey: "rightCurrency") {
+            do {
+                let decoder = JSONDecoder()
+                let decodedCurrency = try decoder.decode(Currency.self, from: rightData)
+                self._rightCurrency = State(initialValue: decodedCurrency)
+            } catch {
+                print("Unable to decode \(rightCurrency)")
+            }
+        }
+        
+    }
     
     var body: some View {
         ZStack {
@@ -133,9 +156,23 @@ struct ContentView: View {
             }
         }
         .onChange(of: leftCurrency) {
+            do {
+                let encoder = JSONEncoder()
+                let data = try encoder.encode(self.leftCurrency)
+                UserDefaults.standard.set(data, forKey: "leftCurrency")
+            } catch {
+                print("Unable to encode \(leftCurrency)")
+            }
             leftAmount = rightCurrency.convert(rightAmount, to: leftCurrency)
         }
         .onChange(of: rightCurrency) {
+            do {
+                let encoder = JSONEncoder()
+                let data = try encoder.encode(self.rightCurrency)
+                UserDefaults.standard.set(data, forKey: "rightCurrency")
+            } catch {
+                print("Unable to encode \(rightCurrency)")
+            }
             rightAmount = leftCurrency.convert(leftAmount, to: rightCurrency)
         }
         .sheet(isPresented: $showExchangeInfo) {
