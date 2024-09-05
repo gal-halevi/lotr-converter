@@ -22,26 +22,35 @@ struct ContentView: View {
     @FocusState var rightTyping
     
     init() {
-        if let leftData = UserDefaults.standard.data(forKey: "leftCurrency") {
+        if let leftCurrency = getUserDefaultsCurrencyObj(forKey: "leftCurrency") {
+            self._leftCurrency = State(initialValue: leftCurrency)
+        }
+        if let rightCurrency = getUserDefaultsCurrencyObj(forKey: "rightCurrency") {
+            self._rightCurrency = State(initialValue: rightCurrency)
+        }
+    }
+    
+    func getUserDefaultsCurrencyObj(forKey: String) -> Currency? {
+        if let data = UserDefaults.standard.data(forKey: forKey) {
             do {
                 let decoder = JSONDecoder()
-                let decodedCurrency = try decoder.decode(Currency.self, from: leftData)
-                self._leftCurrency = State(initialValue: decodedCurrency)
+                let decodedCurrency = try decoder.decode(Currency.self, from: data)
+                return decodedCurrency
             } catch {
-                print("Unable to decode \(leftCurrency)")
+                print("Unable to decode \(forKey)")
             }
         }
-        
-        if let rightData = UserDefaults.standard.data(forKey: "rightCurrency") {
-            do {
-                let decoder = JSONDecoder()
-                let decodedCurrency = try decoder.decode(Currency.self, from: rightData)
-                self._rightCurrency = State(initialValue: decodedCurrency)
-            } catch {
-                print("Unable to decode \(rightCurrency)")
-            }
+        return nil
+    }
+    
+    func setUserDefaultsCurrencyObj(currency: Currency, forKey: String) {
+        do {
+            let encoder = JSONEncoder()
+            let data = try encoder.encode(currency)
+            UserDefaults.standard.set(data, forKey: forKey)
+        } catch {
+            print("Unable to encode \(currency)")
         }
-        
     }
     
     var body: some View {
@@ -63,31 +72,11 @@ struct ContentView: View {
                 
                 // Currency Exchange section
                 HStack {
-                    // Left currency
-                    VStack {
-                        HStack {
-                            // Currency image
-                            Image(leftCurrency.image)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(height: 33)
-                            // Currency text
-                            Text(leftCurrency.name)
-                                .font(.headline)
-                                .foregroundStyle(.white)
-                        }
-                        .padding(.bottom, -5)
-                        .onTapGesture {
-                            showSelectCurrency.toggle()
-                        }
-                        .popoverTip(CurrencyTip(), arrowEdge: .bottom)
-                        
-                        // Amount text box
-                        TextField("Amount", text: $leftAmount)
-                            .textFieldStyle(.roundedBorder)
-                            .focused($leftTyping)
-                            .keyboardType(.decimalPad)
-                    }
+                    VStackCurrency(currency: leftCurrency,
+                                   amount: $leftAmount,
+                                   showSelectCurrency: $showSelectCurrency,
+                                   focusTyping: $leftTyping,
+                                   rightAlignment: false)
                     
                     // Equal sign text
                     Image(systemName: "equal")
@@ -95,35 +84,16 @@ struct ContentView: View {
                         .foregroundColor(.white)
                         .symbolEffect(.pulse)
                     
-                    // Right currency
-                    VStack {
-                        HStack {
-                            // Currency text
-                            Text(rightCurrency.name)
-                                .font(.headline)
-                                .foregroundStyle(.white)
-                            // Currency image
-                            Image(rightCurrency.image)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(height: 33)
-                        }
-                        .padding(.bottom, -5)
-                        .onTapGesture {
-                            showSelectCurrency.toggle()
-                        }
-                        
-                        // Amount text box
-                        TextField("Amount", text: $rightAmount)
-                            .textFieldStyle(.roundedBorder)
-                            .multilineTextAlignment(.trailing)
-                            .focused($rightTyping)
-                            .keyboardType(.decimalPad)
-                    }
+                    VStackCurrency(currency: rightCurrency,
+                                   amount: $rightAmount,
+                                   showSelectCurrency: $showSelectCurrency,
+                                   focusTyping: $rightTyping,
+                                   rightAlignment: true)
                 }
                 .padding()
                 .background(.black.opacity(0.5))
                 .clipShape(.capsule)
+                .popoverTip(CurrencyTip(), arrowEdge: .bottom)
                 .onTapGesture() {}
                 
                 Spacer()
@@ -157,23 +127,11 @@ struct ContentView: View {
             }
         }
         .onChange(of: leftCurrency) {
-            do {
-                let encoder = JSONEncoder()
-                let data = try encoder.encode(self.leftCurrency)
-                UserDefaults.standard.set(data, forKey: "leftCurrency")
-            } catch {
-                print("Unable to encode \(leftCurrency)")
-            }
+            setUserDefaultsCurrencyObj(currency: leftCurrency, forKey: "leftCurrency")
             leftAmount = rightCurrency.convert(rightAmount, to: leftCurrency)
         }
         .onChange(of: rightCurrency) {
-            do {
-                let encoder = JSONEncoder()
-                let data = try encoder.encode(self.rightCurrency)
-                UserDefaults.standard.set(data, forKey: "rightCurrency")
-            } catch {
-                print("Unable to encode \(rightCurrency)")
-            }
+            setUserDefaultsCurrencyObj(currency: rightCurrency, forKey: "rightCurrency")
             rightAmount = leftCurrency.convert(leftAmount, to: rightCurrency)
         }
         .onTapGesture {
